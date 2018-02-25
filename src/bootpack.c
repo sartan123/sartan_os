@@ -69,11 +69,10 @@ void HariMain(void)
 	sheet_updown(sht_win,  1);
 	sheet_updown(sht_mouse, 2);
 	sprintf(s, "(%3d, %3d)", mx, my);
-	puttext8(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+	puttext8_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, s, 10);
 	sprintf(s, "memory %dMB   free : %dKB",
 			memtotal / (1024 * 1024), memman_total(memman) / 1024);
-	puttext8(buf_back, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
-	sheet_refresh(sht_back, 0, 0, binfo->scrnx, 48);
+	puttext8_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, s, 40);
 
 	for(;;)
 	{
@@ -95,9 +94,7 @@ void HariMain(void)
 				i = fifo8_get(&keyfifo);
 				io_sti();
 				sprintf(s, "%02X", i);
-				boxfill8(binfo->vram, binfo->scrnx, COL8_0000FF, 0, 16, 15, 31);
-				puttext8(binfo->vram, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
-				sheet_refresh( sht_back, 0, 16, 16, 32);
+				puttext8_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, s, 2);
 			}
 			else if(fifo8_status(&mousefifo) != 0)
 			{
@@ -140,9 +137,7 @@ void HariMain(void)
 						my = binfo->scrny - 1;
 					}
 					sprintf(s, "(%d, %d)", mx, my);
-					boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 0, 79, 15);
-					puttext8(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
-					sheet_refresh(sht_back, 0, 0, 80, 16);
+					puttext8_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, s, 10);
 					sheet_slide(sht_mouse, mx, my);		
 				}
 			}
@@ -150,15 +145,13 @@ void HariMain(void)
 			{
 				i = fifo8_get(&timefifo);
 				io_sti();
-				puttext8(buf_back, binfo->scrnx, 0, 64, COL8_FFFFFF, "10[sec]");
-				sheet_refresh(sht_back, 0, 64, 56, 80);
+				puttext8_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
 			}
 			else if(fifo8_status(&timefifo2) != 0)
 			{
 				i = fifo8_get(&timefifo2);
 				io_sti();
-				puttext8(buf_back, binfo->scrnx, 0, 80, COL8_FFFFFF, "3[sec]");
-				sheet_refresh(sht_back, 0, 80, 48, 96);
+				puttext8_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_008484, "3[sec]", 6);
 			}
 			else if(fifo8_status(&timefifo3) != 0)
 			{
@@ -231,10 +224,10 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title)
 	return;
 }
 
-void puttext8_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int i)
+void puttext8_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l)
 {
-	boxfill8(sht->buf, sht->bxsize, b, x, y, x + 1*8 -1 , y + 15);
+	boxfill8(sht->buf, sht->bxsize, b, x, y, x + l*8 -1 , y + 15);
 	puttext8(sht->buf, sht->bxsize, x, y, c, s);
-	sheet_refresh(sht, x, y, x + 1*8, y + 16);
+	sheet_refresh(sht, x, y, x + l*8, y + 16);
 	return;
 }

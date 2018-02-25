@@ -26,18 +26,17 @@ void HariMain(void)
 	io_out8(PIC1_IMR, 0xef);
 
 	fifo8_init(&timefifo, 8, timebuf);
+
 	timer = timer_alloc();
-	timer_init(timer, &timefifo, 1);
+	timer_init(timer, &timefifo, 10);
 	timer_settime(timer, 1000);
 
-	fifo8_init(&timefifo2, 8, timebuf2);
 	timer2 = timer_alloc();
-	timer_init(timer2, &timefifo2, 1);
+	timer_init(timer2, &timefifo, 3);
 	timer_settime(timer2, 300);
 
-	fifo8_init(&timefifo3, 8, timebuf3);
 	timer3 = timer_alloc();
-	timer_init(timer3, &timefifo3, 1);
+	timer_init(timer3, &timefifo, 1);
 	timer_settime(timer3, 50);
 
 	init_keyboard();
@@ -82,8 +81,7 @@ void HariMain(void)
 		sheet_refresh(sht_win, 40, 28, 120, 44);
 
 		io_cli();
-		if((fifo8_status(&keyfifo) + fifo8_status(&mousefifo) 
-		   + fifo8_status(&timefifo) + fifo8_status(&timefifo2)+ fifo8_status(&timefifo3)) == 0)
+		if((fifo8_status(&keyfifo) + fifo8_status(&mousefifo) + fifo8_status(&timefifo)) == 0)
 		{
 			io_sti();
 		}
@@ -145,30 +143,29 @@ void HariMain(void)
 			{
 				i = fifo8_get(&timefifo);
 				io_sti();
-				puttext8_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
-			}
-			else if(fifo8_status(&timefifo2) != 0)
-			{
-				i = fifo8_get(&timefifo2);
-				io_sti();
-				puttext8_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_008484, "3[sec]", 6);
-			}
-			else if(fifo8_status(&timefifo3) != 0)
-			{
-				i = fifo8_get(&timefifo3);
-				io_sti();
-				if(i != 0)
+				if(i == 10)
 				{
-					timer_init(timer3, &timefifo3, 0);
-					boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
+					puttext8_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
+				}
+				else if(i == 3)
+				{
+					puttext8_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_008484, "3[sec]", 6);
 				}
 				else
 				{
-					timer_init(timer3, &timefifo3, 1);
-					boxfill8(buf_back, binfo->scrnx, COL8_008484, 8, 96, 15, 111);		
+					if(i != 0)
+					{
+						timer_init(timer3, &timefifo, 0);
+						boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
+					}
+					else
+					{
+						timer_init(timer3, &timefifo, 1);
+						boxfill8(buf_back, binfo->scrnx, COL8_008484, 8, 96, 15, 111);		
+					}
+					timer_settime(timer3, 50);
+					sheet_refresh(sht_back, 8, 96, 16, 111);
 				}
-				timer_settime(timer3, 50);
-				sheet_refresh(sht_back, 8, 96, 15, 111);
 			}
 		}
 	}

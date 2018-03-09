@@ -16,7 +16,7 @@ void init_pit(void)
     timerctl.usings = 0;
     for(i = 0; i < MAX_TIMER; i++)
     {
-        timerctl.timers0[i].flags = 0;
+        timerctl.timer[i].flags = 0;
     }
     return;
 }
@@ -26,10 +26,10 @@ struct TIMER *timer_alloc(void)
     int i;
     for(i = 0; i < MAX_TIMER; i++)
     {
-        if(timerctl.timers0[i].flags == 0)
+        if(timerctl.timer[i].flags == 0)
         {
-            timerctl.timers0[i].flags = TIMER_FLAGS_ALLOC;
-            return &timerctl.timers0[i];
+            timerctl.timer[i].flags = TIMER_FLAGS_ALLOC;
+            return &timerctl.timer[i];
         }
     }
     return 0;
@@ -50,30 +50,30 @@ void timer_init(struct TIMER *timer, struct FIFO32 *fifo, int data)
 
 void inthandler20(int *esp)
 {
-    int i,j;
+    int i;
+    struct TIMER *timer;
     io_out8(PIC0_OCW2, 0x60);
     timerctl.count++;
     if(timerctl.next > timerctl.count)
     {
         return;
     }
+    timer = timerctl.t0;
     for(i = 0; i < timerctl.usings; i++)
     {
-        if(timerctl.timer[i]->timeout > timerctl.count)
+        if(timer->timeout > timerctl.count)
         {
             break;
         }
-        timerctl.timer[i]->flags = TIMER_FLAGS_ALLOC;
-        fifo32_put(timerctl.timer[i]->fifo, timerctl.timer[i]->data);
+        timer->flags = TIMER_FLAGS_ALLOC;
+        fifo32_put(timer->fifo, timer->data);
+        timer = timer->next;
     }
     timerctl.usings -= i;
-    for(j = 0; j < timerctl.usings; j++)
-    {
-        timerctl.timer[j] = timerctl.timer[i+j];
-    }
+    timerctl.t0 = timer;
     if(timerctl.usings > 0)
     {
-        timerctl.next = timerctl.timer[0]->timeout;
+        timerctl.next = timerctl.t0->timeout;
     }
     else
     {
@@ -84,25 +84,48 @@ void inthandler20(int *esp)
 
 void timer_settime(struct TIMER *timer, unsigned int timeout)
 {
-    int e,i,j;
+    int e;
+    struct TIMER *t, *s;
     timer->timeout = timeout + timerctl.count;
     timer->flags = TIMER_FLAGS_USING;
     e = io_load_eflags();
     io_cli();
-    for(i = 0; i < timerctl.usings; i++)
+    timerctl.usings++;
+    if(timerctl.usings == 1)
     {
-        if(timerctl.timer[i]->timeout >= timer->timeout)
+        timerctl.t0 = timer;
+        timer->next = 0;
+        timerctl.next = timer->timeout;
+        io_store_eflags(e);
+        return;
+    }
+    t = timerctl.t0;
+    if(timer->timeout <= t->timeout)
+    {
+        timerctl.t0 = timer;
+        timer->next = t;
+        timerctl.next = timer->timeout;
+        io_store_eflags(e);
+        return;
+    }
+    for(;;)
+    {
+        s = t;
+        t = t->next;
+        if(t == 0)
         {
             break;
         }
+        if(timer->timeout <= t->timeout)
+        {
+            s->next = timer;
+            timer->next = t;
+            io_store_eflags(e);
+            return;
+        }
     }
-    for(j = timerctl.usings; j > i; j--)
-    {
-        timerctl.timer[j] = timerctl.timer[j-1];
-    }
-    timerctl.usings++;
-    timerctl.timer[j] = timer;
-    timerctl.next = timerctl.timer[0]->timeout;
+    s->next = timer;
+    timer->next = 0;
     io_store_eflags(e);
     return;
 }
